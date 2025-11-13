@@ -1,48 +1,39 @@
 """
-Database Schemas
-
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
+Database Schemas for Mebella furniture catalog
 
 Each Pydantic model represents a collection in your database.
 Model name is converted to lowercase for the collection name:
-- User -> "user" collection
 - Product -> "product" collection
-- BlogPost -> "blogs" collection
+
+We model furniture with variants so one product (model) can have multiple
+sizes and colors.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 
-# Example schemas (replace with your own):
 
-class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+class Variant(BaseModel):
+    """A purchasable variation of a product (e.g., color + size)."""
+    color: str = Field(..., description="Color name (e.g., 'черный', 'бежевый')")
+    color_hex: Optional[str] = Field(None, description="HEX color like #000000")
+    size: Optional[str] = Field(None, description="Size label (e.g., 'S', 'M', 'L', '120x60')")
+    sku: Optional[str] = Field(None, description="Stock keeping unit")
+    price: float = Field(..., ge=0, description="Price for this variant")
+    stock: int = Field(0, ge=0, description="Units available in stock")
+
 
 class Product(BaseModel):
     """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
+    Furniture product model (a single design/model with multiple variants)
+    Collection name: "product"
     """
-    title: str = Field(..., description="Product title")
+    name: str = Field(..., description="Product name/model")
     description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
-
-# Add your own schemas here:
-# --------------------------------------------------
-
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+    category: str = Field(..., description="Category: стулья, шкафы, тумбы, столы")
+    base_price: Optional[float] = Field(None, ge=0, description="Optional base price (fallback)")
+    images: List[str] = Field(default_factory=list, description="Image URLs")
+    variants: List[Variant] = Field(default_factory=list, description="List of available variations")
+    brand: str = Field("Мебелла", description="Brand name")
+    material: Optional[str] = Field(None, description="Primary material")
+    color_family: Optional[List[str]] = Field(None, description="List of color families for filtering")
