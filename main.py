@@ -125,6 +125,118 @@ def list_categories():
     ]
 
 
+# --- Sample data seeding ---
+
+def _sample_products() -> list[dict]:
+    return [
+        {
+            "name": "Стул Nordica",
+            "description": "Скандинавский стул с мягким сиденьем и деревянными ножками.",
+            "category": "стулья",
+            "base_price": 4990,
+            "images": [
+                "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200&q=80&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1503602642458-232111445657?w=1200&q=80&auto=format&fit=crop"
+            ],
+            "material": "Массив бука, ткань",
+            "brand": "Мебелла",
+            "color_family": ["бежевый", "серый", "черный"],
+            "variants": [
+                {"color": "бежевый", "color_hex": "#D8C3A5", "size": "стандарт", "sku": "CH-NOR-BE-STD", "price": 4990, "stock": 25},
+                {"color": "серый", "color_hex": "#A0A0A0", "size": "стандарт", "sku": "CH-NOR-GR-STD", "price": 4990, "stock": 18},
+                {"color": "черный", "color_hex": "#000000", "size": "стандарт", "sku": "CH-NOR-BK-STD", "price": 5290, "stock": 12}
+            ]
+        },
+        {
+            "name": "Шкаф Alto 3D",
+            "description": "Трехдверный шкаф с отделениями для одежды и белья, спокойный минимализм.",
+            "category": "шкафы",
+            "base_price": 24990,
+            "images": [
+                "https://images.unsplash.com/photo-1598300183876-2b0b1f5b7c47?w=1200&q=80&auto=format&fit=crop"
+            ],
+            "material": "ЛДСП, МДФ",
+            "brand": "Мебелла",
+            "color_family": ["белый", "дуб"],
+            "variants": [
+                {"color": "белый", "color_hex": "#FFFFFF", "size": "200x120x60", "sku": "WR-AL3-WH-200", "price": 24990, "stock": 8},
+                {"color": "дуб", "color_hex": "#C5A572", "size": "220x140x60", "sku": "WR-AL3-OK-220", "price": 28990, "stock": 5}
+            ]
+        },
+        {
+            "name": "Тумба Nova",
+            "description": "Прикроватная тумба с плавным закрыванием, скрытые ручки.",
+            "category": "тумбы",
+            "base_price": 6990,
+            "images": [
+                "https://images.unsplash.com/photo-1549187774-b4e9b0445b06?w=1200&q=80&auto=format&fit=crop"
+            ],
+            "material": "МДФ",
+            "brand": "Мебелла",
+            "color_family": ["белый", "графит"],
+            "variants": [
+                {"color": "белый", "color_hex": "#FFFFFF", "size": "50x40x35", "sku": "NS-NOV-WH-50", "price": 6990, "stock": 20},
+                {"color": "графит", "color_hex": "#3B3B3B", "size": "50x40x35", "sku": "NS-NOV-GR-50", "price": 7290, "stock": 14}
+            ]
+        },
+        {
+            "name": "Стол Loft+",
+            "description": "Обеденный стол в стиле лофт, металлическое основание, столешница из дуба.",
+            "category": "столы",
+            "base_price": 19990,
+            "images": [
+                "https://images.unsplash.com/photo-1493666438817-866a91353ca9?w=1200&q=80&auto=format&fit=crop"
+            ],
+            "material": "Дуб, металл",
+            "brand": "Мебелла",
+            "color_family": ["дуб натуральный", "венге"],
+            "variants": [
+                {"color": "дуб натуральный", "color_hex": "#C8A97E", "size": "120x70", "sku": "TB-LOF-NA-120", "price": 19990, "stock": 10},
+                {"color": "дуб натуральный", "color_hex": "#C8A97E", "size": "160x80", "sku": "TB-LOF-NA-160", "price": 23990, "stock": 7},
+                {"color": "венге", "color_hex": "#3E2B23", "size": "160x80", "sku": "TB-LOF-WE-160", "price": 24990, "stock": 4}
+            ]
+        }
+    ]
+
+
+def seed_if_empty() -> dict:
+    """Insert sample products if the collection is empty. Returns stats."""
+    if db is None:
+        return {"seeded": False, "reason": "database not available"}
+    try:
+        count = db["product"].count_documents({})
+        if count > 0:
+            return {"seeded": False, "reason": "already has data", "count": count}
+        products = _sample_products()
+        inserted = 0
+        for p in products:
+            try:
+                create_document("product", p)
+                inserted += 1
+            except Exception:
+                continue
+        return {"seeded": True, "inserted": inserted}
+    except Exception as e:
+        return {"seeded": False, "reason": str(e)}
+
+
+@app.post("/api/seed", tags=["admin"])
+def seed_endpoint():
+    """Manually trigger sample data seeding."""
+    result = seed_if_empty()
+    if not result.get("seeded") and result.get("reason") == "already has data":
+        return result
+    if not result.get("seeded"):
+        raise HTTPException(status_code=500, detail=result)
+    return result
+
+
+# Auto-seed on startup if empty
+@app.on_event("startup")
+async def startup_event():
+    seed_if_empty()
+
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
